@@ -1,16 +1,15 @@
-use std::path;
+
 
 use actix_web::{web,get,post,delete,put,HttpResponse};
-use diesel::result::Error::NotFound; 
+// use diesel::result::Error::NotFound; 
 use crate::models::product::{Product,NewProduct, self};
 use crate::repository::database::Database;
-use env_logger::Env;
+
 
 //productssssssssssssssssssssssssssssssss
 //1.add the product
 #[post("/addproduct")]
 async fn create_product(db:web::Data<Database>,product:web::Json<NewProduct>)->HttpResponse{
-    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     let product = db.create_product(product.into_inner());
     match product {
         Ok(product)=>{HttpResponse::Ok().json(product)},

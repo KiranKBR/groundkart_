@@ -1,16 +1,15 @@
-use std::path;
+// use std::path;
 
 use actix_web::{web,get,post,delete,put,HttpResponse};
-use diesel::result::Error::NotFound; 
-use crate::models::product::{Product,NewProduct, self};
+// use diesel::result::Error::NotFound; 
+use crate::models::product::{Product,NewProduct};
 use crate::repository::database::Database;
-use env_logger::Env;
+
 
 //productssssssssssssssssssssssssssssssss
 //1.add the product
 #[post("/addproduct")]
 async fn create_product(db:web::Data<Database>,product:web::Json<NewProduct>)->HttpResponse{
-    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     let product = db.create_product(product.into_inner());
     match product {
         Ok(product)=>{HttpResponse::Ok().json(product)},
@@ -43,6 +42,7 @@ async fn update_product(db:web::Data<Database>,product:web::Json<Product>)->Http
   } 
 }
 
+//5.deletetheproduct
 #[delete("/product/{id}")] 
 async fn delete_product(db:web::Data<Database>,path:web::Path<i32>)->HttpResponse{ 
   let product = db.delete_product(path.into_inner()); 
@@ -52,6 +52,23 @@ async fn delete_product(db:web::Data<Database>,path:web::Path<i32>)->HttpRespons
   } 
 } 
 
+//6.get all users
+#[get("/getusers")]
+async fn get_users(db:web::Data<Database>) -> HttpResponse {
+  let users = db.get_users();
+  HttpResponse::Ok().json(users)
+}
+
+//7.get user by id
+#[get("/getuser/{id}")]
+async fn get_user(db:web::Data<Database>,path:web::Path<i32>) -> HttpResponse {
+    let product = db.get_user(path.into_inner());
+    match product {
+        Some(product) =>HttpResponse::Ok().json(product),
+        None => HttpResponse::NotFound().body("not found")
+    }
+}
+
 pub fn init_routes(cfg:&mut web::ServiceConfig){ 
     cfg.service( 
       web::scope("/admin") 
@@ -60,5 +77,7 @@ pub fn init_routes(cfg:&mut web::ServiceConfig){
         .service(get_product)
         .service(update_product)
         .service(delete_product)
+        .service(get_users)
+        .service(get_user)
      ); 
   }

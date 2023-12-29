@@ -7,11 +7,17 @@ edition = "2021"
 
 [dependencies]
 actix-web = "4.4.0"
+actix-cors = "0.6.4"
+actix-identity = "0.6.0"
 chrono = { version = "0.4.31", features = ["serde"] }
 diesel = { version = "2.1.4", features = ["postgres", "r2d2", "chrono", "uuid"] }
 diesel_migrations = { version = "2.1.0", features = ["postgres"] }
 dotenv = "0.15.0"
-env_logger = "0.10.1"
+# env_logger = "0.10.1"
 r2d2 = "0.8.10"
 serde = { version = "1.0.193", features = ["derive"] }
+# tokio = { version = "1", features = ["full"] }
 uuid = { version = "1.6.1", features = ["v4"] }
+# jsonwebtoken = "9.1.0"
+# argon2 = "0.5.2"
+# rand_core = { version = "0.6.4", features = ["std"] }

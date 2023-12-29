@@ -1,14 +1,17 @@
 use actix_web::{get, web, App, HttpResponse, HttpServer, Responder, Result};
-use env_logger::Env;
+
+// use env_logger::Env;
 use serde::Serialize;
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness};
 #[macro_use]
 extern crate diesel_migrations;
 
-
 mod handlers;
 mod models;
 mod repository;
+pub mod authentication;
+
+
 
 
 #[derive(Serialize)]
@@ -52,9 +55,11 @@ async fn main() -> std::io::Result<()> {
             .app_data(app_data.clone())
             .configure(handlers::product_handler::init_routes)
             .configure(handlers::admin_handler::init_routes)
+            .configure(handlers::cart_handler::init_routes)
+            .configure(handlers::login_handler::init_routes)
             .service(health)
-            .default_service(web::route().to(not_found_error))
-            .wrap(actix_web::middleware::Logger::default())
+            // .default_service(web::route().to(not_found_error))
+            // .wrap(actix_web::middleware::Logger::default())
             
     })
     .bind(("0.0.0.0", 8080))?
