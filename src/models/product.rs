@@ -9,6 +9,7 @@ pub struct Product {
     pub category: String,
     pub name: String,
     pub unit_stock: Option<i32>,
+    pub price:Option<f64>,
 }
 
 #[derive(Deserialize, Serialize,Debug,Clone,Insertable)] 
@@ -17,4 +18,5 @@ pub struct NewProduct {
     pub category: String,
     pub name: String,
     pub unit_stock: Option<i32>,
+    pub price:Option<f64>
 }

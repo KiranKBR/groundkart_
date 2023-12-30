@@ -42,6 +42,7 @@ diesel::table! {
         category -> Text,
         name -> Text,
         unit_stock -> Nullable<Int4>,
+        price -> Nullable<Float8>,
     }
 }
 

@@ -57,10 +57,12 @@ async fn main() -> std::io::Result<()> {
             .configure(handlers::admin_handler::init_routes)
             .configure(handlers::cart_handler::init_routes)
             .configure(handlers::login_handler::init_routes)
+            .configure(handlers::buy_handler::init_routes)
+            .configure(handlers::cart_handler::init_routes)
+            .configure(handlers::order_handler::init_routes)
             .service(health)
             // .default_service(web::route().to(not_found_error))
-            // .wrap(actix_web::middleware::Logger::default())
-            
+            // .wrap(actix_web::middleware::Logger::default())          
     })
     .bind(("0.0.0.0", 8080))?
     .run()

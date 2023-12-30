@@ -4,12 +4,17 @@ use dotenv::dotenv;
 use crate::models::customer::{self, Customer, NewCustomer};
 use crate::models::cart::Cart;
 use crate::models::cartitem::{CartItem,NewCartItem};
+use crate::models::orderitem::{OrderItem, NewOrderItem};
 use crate::models::product::{Product,NewProduct}; 
-use crate::models::schema::product::dsl as product_schema;
+use crate::models::schema::product::dsl::{self as product_schema, unit_stock};
 use crate::models::schema::customer::dsl as customer_schema;
 use crate::models::schema::cart::dsl as cart_schema;
+use crate::models::schema::orderitem::dsl as orderitem_schema;
+use crate::models::schema::salesorder::dsl as order_schema;
 use crate::models::schema::cartitem::dsl::{self as cartitem_schema, quantity};
 use diesel::associations::HasTable;
+use crate::models::salesorder::{SalesOrder,NewSalesOrder};
+
 
 
 pub type DBPool = r2d2::Pool<ConnectionManager<PgConnection>>;
@@ -56,7 +61,7 @@ pub struct Database {
     pub fn delete_product(&self,find_id:i32)->Result<usize,diesel::result::Error>{ 
       diesel::delete(product_schema::product.filter(product_schema::id.eq(find_id))).execute(&mut self.pool.get().unwrap()) 
     } 
-        // 6. get cart
+    //6. get cart
     pub fn get_cart(&self, user_id: i32) -> Option<Vec<CartItem>> {
       let cart_id = customer_schema::customer
       .find(user_id)
@@ -120,6 +125,94 @@ pub struct Database {
     //12.update cart item 
     pub fn update_cart_item(&self,item:CartItem) -> Result<CartItem,diesel::result::Error> {
       diesel::update(cartitem_schema::cartitem.filter(cartitem_schema::id.eq(item.id))).set(&item).get_result(&mut self.pool.get().unwrap()) 
+    }
+
+    //13. direct buy
+    pub fn direct_buy(&self,user_id:i32,productid:i32) -> Result<OrderItem,diesel::result::Error> {
+      let mut product = self.get_product(productid).unwrap();
+      let order = NewSalesOrder {
+          customer_id:Some(user_id),
+          price:Some(product.price.unwrap())
+      }; 
+      let order:Result<SalesOrder,diesel::result::Error> = diesel::insert_into(order_schema::salesorder).values(&order).get_result(&mut self.pool.get().unwrap());
+      let item = NewOrderItem {
+          quantity:Some(1),
+          price:Some(product.price.unwrap()),
+          product_id:Some(productid),
+          salesorder_id:Some(order.unwrap().id)
+      };
+      product.unit_stock=Some(product.unit_stock.unwrap()-1);
+      let _ = self.update_product(product);
+      diesel::insert_into(orderitem_schema::orderitem).values(&
+        item).get_result(&mut self.pool.get().unwrap()) 
+    }
+
+    //14.buy cart item
+    pub fn buy_cart_item(&self,item:CartItem) -> Result<OrderItem,diesel::result::Error> {
+      let mut product = self.get_product(item.product_id.unwrap()).unwrap();
+      let order = NewSalesOrder {
+        customer_id:Some(1),
+        price:Some(item.quantity.unwrap() as f64 *product.price.unwrap()),
+      };
+      product.unit_stock = Some(product.unit_stock.unwrap()-item.quantity.unwrap());
+      let i_id=item.id;
+      let order:SalesOrder = diesel::insert_into(order_schema::salesorder).values(&order).get_result(&mut self.pool.get().unwrap())?;
+      let item = NewOrderItem {
+        quantity:Some(item.quantity.unwrap()),
+        price:Some(order.price.unwrap()),
+        product_id:Some(product.id),
+        salesorder_id:Some(order.id)
+    };
+    let _ = self.update_product(product);
+    let _= self.delete_cartitem(i_id);
+    diesel::insert_into(orderitem_schema::orderitem).values(&
+      item).get_result(&mut self.pool.get().unwrap()) 
+    }
+
+    //15.checkout 
+    pub fn checkout_cart(&self,user_id: i32) -> Result<SalesOrder,diesel::result::Error> {
+      let items = self.get_cart(user_id).unwrap();
+      let order = NewSalesOrder {
+        customer_id:Some(user_id),
+        price:None,
+      };
+      let mut order:SalesOrder = diesel::insert_into(order_schema::salesorder).values(&order).get_result(&mut self.pool.get().unwrap())?;
+      let mut price:f64 = 0.0;
+      for item in &items {
+        let i_id=item.id;
+        let mut product = self.get_product(item.product_id.unwrap()).unwrap();
+        let tprice = item.quantity.unwrap() as f64 *product.price.unwrap(); 
+        product.unit_stock = Some(product.unit_stock.unwrap()-item.quantity.unwrap());
+        price = price+tprice;
+        let item :NewOrderItem= NewOrderItem {
+          quantity:Some(item.quantity.unwrap()),
+          price:Some(tprice),
+          product_id:Some(product.id),
+          salesorder_id:Some(order.id)
+        };
+        let _ = self.update_product(product);
+        let _= self.delete_cartitem(i_id);
+        let _ = diesel::insert_into(orderitem_schema::orderitem).values(&
+           item).execute(&mut self.pool.get().unwrap());
+      }
+      order.price=Some(price);
+      diesel::update(order_schema::salesorder.filter(order_schema::id.eq(order.id))).set(&order).get_result(&mut self.pool.get().unwrap())
+    }
+
+    //16.get order list of user
+    pub fn get_orders(&self,user_id:i32) -> Option<Vec<SalesOrder>> {
+      order_schema::salesorder
+        .filter(order_schema::customer_id.eq(user_id))
+        .load::<SalesOrder>(&mut self.pool.get().unwrap())
+        .ok()
+    }
+
+    //17.get order items by id 
+    pub fn get_order_by_id(&self,order_id:i32) -> Option<Vec<OrderItem>> {
+      orderitem_schema::orderitem
+        .filter(orderitem_schema::salesorder_id.eq(order_id))
+        .load::<OrderItem>(&mut self.pool.get().unwrap())
+        .ok()
     }
   }
 
